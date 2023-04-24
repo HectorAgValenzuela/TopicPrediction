@@ -1,1 +1,5 @@
 client_secret.json
+api/
+install-pyenv-win.ps1
+__pycache__
+token_youtube_v3.pickle
