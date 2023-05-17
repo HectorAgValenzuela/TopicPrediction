@@ -13,10 +13,41 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import MaxAbsScaler
 from gensim import corpora
 from gensim.models import LdaModel
+from collections import defaultdict
+
+result = {}
 
 def pre(sin_procesar: DataFrame):
+    def obtener_datos_stop_words():
+        stop_words = stopwords.words('spanish')
+        stop_words.extend(['mil', 'millón', 'millon', 'pregunta', 'respuesta'])
+        dic = defaultdict(int)
+        new = sin_procesar['description'].str.split()
+        new = new.values.tolist()
+        corpus_list = [word for i in new for word in i]
+        for word in corpus_list:
+            if word in stop_words:
+                dic[word] += 1
+        top = sorted(dic.items(), key = lambda x: x[1], reverse = True)[:20] 
+        x, y = zip(*top)
+        return { x, y }
+    
+    # def obtener_datos_lematizar_texto():
+    #     dic = defaultdict(int)
+    #     nlp = spacy.load("es_core_news_sm")
+    #     lista = sin_procesar['description'].tolist()
+    #     texto = ' '.join(lista)
+    #     doc = nlp(str(texto))
+    #     for token in doc:
+    #         dic[token.lemma_] += 1
+    #     top = sorted(dic.items(), key = lambda x: x[1], reverse = True)[:20] 
+    #     x, y = zip(*top)
+    #     return { x, y }
+
     def quitar_stopwords(text):
-        sw_es = set(stopwords.words('spanish'))
+        stop_word = stopwords.words('spanish')
+        stop_word.extend(['mil', 'millón', 'millon', 'pregunta', 'respuesta'])
+        sw_es = set(stop_word)
         text = ' '.join([word for word in text.split() if word.lower() not in sw_es])
         return text
 
@@ -36,29 +67,33 @@ def pre(sin_procesar: DataFrame):
         return re.findall(r'[a-zñ]+', text)
     
     dataframe = sin_procesar[['description']].copy()
+    result['stop_words'] = obtener_datos_stop_words()
+    print('preprocesamiento: quitar_stopwords')
     dataframe['description'] = dataframe['description'].apply(quitar_stopwords)
+    # result['lemma'] = obtener_datos_lematizar_texto()
+    print('preprocesamiento: lematizar_texto')
     dataframe['description'] = dataframe['description'].apply(lematizar_texto)
+    print('preprocesamiento: limpiar_caracteres')
     dataframe['description'] = dataframe['description'].apply(limpiar_caracteres).apply(lambda x: " ".join(x))
     return dataframe
 
 def principal(preprocesada: DataFrame):
-    result = {}
     #SECCION I
     # Creamos una instancia que hará la vectorización TF-IDF
     vectorizador = TfidfVectorizer()
 
     # Tokenizamos como Penn Treebank
     tokenizer = TreebankWordTokenizer()
-    vectorizador.set_params(tokenizer=tokenizer.tokenize)
+    vectorizador.set_params(tokenizer = tokenizer.tokenize)
 
     # Incluimos 1-grams y 2-grams
-    vectorizador.set_params(ngram_range=(1, 3))
+    vectorizador.set_params(ngram_range = (1, 3))
 
     # Ignoramos términos que aparecen en más del 70% de los documentos
-    vectorizador.set_params(max_df=0.7) 
+    vectorizador.set_params(max_df = 0.7) 
 
     # Solo mantenemos los términos que aparecen en al menos 2 documentos
-    vectorizador.set_params(min_df=2)
+    vectorizador.set_params(min_df = 2)
 
     # Lo aplicamos
     vector = vectorizador.fit_transform(preprocesada['description']) 
@@ -66,11 +101,13 @@ def principal(preprocesada: DataFrame):
     #SECCION II
     # Descomposicion por valores singulares (SVD)
     # Creamos la instancia 
-    scaler = StandardScaler(with_mean=False)
+    scaler = StandardScaler(with_mean = False)
     # Calculamos el promedio y la desviacion estandar
     scaler.fit(vector)
     # Re escalamos
     vector_escalado_estandar = scaler.transform(vector)
+    lista_svd = vector_escalado_estandar.toarray()
+    result['svd'] = list(lista_svd)
 
     # SECCION III
     # Aplicamos TruncatedSVD
@@ -207,9 +244,9 @@ def principal(preprocesada: DataFrame):
         print(str(key) + ": " + str(round(value,3)))
     # Find the lowest and highest values
     lowest_value = min(my_dict.values())
-    lowest_key = min(my_dict, key=my_dict.get)
+    lowest_key = min(my_dict, key = my_dict.get)
     highest_value = max(my_dict.values())
-    highest_key = max(my_dict, key=my_dict.get)
+    highest_key = max(my_dict, key = my_dict.get)
     print("El " + str(lowest_key) + " fue el menos recurrente.")
     print("El " + str(highest_key) + " fue el más recurrente.")
     result['my_dict'] = my_dict

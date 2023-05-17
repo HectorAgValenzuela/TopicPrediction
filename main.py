@@ -28,8 +28,16 @@ def main():
     dataframe_preprocesada = pre(dataframe_sin_procesar)
     print('aplicando procesamiento principal a dataframe...')
     resultados = principal(dataframe_preprocesada)
+    # analisis
+    print(resultados['stop_words'])
+    # print(resultados['lemma'])
+    print(resultados['svd'])
+    # print(resultados['max_abs'])
+    # print(resultados['key_words'])
+    # # resultados
+    # print(resultados['weekly_topics'])
+    # print(resultados['topics'])
     print('guardando procesamiento [resultados.json]...')
-    print(resultados)
     with open("resultados.json", "w") as resultados_json:
         json.dump(resultados, resultados_json)
     print('ejecutado correctamente...')
